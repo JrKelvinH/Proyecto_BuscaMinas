@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../logic/minesweeper_engine.dart';
 
-
 class GameScreen extends StatefulWidget {
   final int rows;
   final int cols;
@@ -9,9 +8,9 @@ class GameScreen extends StatefulWidget {
 
   const GameScreen({
     super.key, 
-    this.rows = 8,  // Configuración "Medio" por defecto
-    this.cols = 8, 
-    this.mines = 20,
+    required this.rows,  
+    required this.cols, 
+    required this.mines,
   });
 
   @override
@@ -19,13 +18,18 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  // Se mantiene el late por el que consultabas, pero inicializado correctamente
   late MinesweeperEngine game;
 
   @override
   void initState() {
-    super.initState() {
-      _startNewGame();
-    }
+    super.initState();
+    // Inicialización directa en el nacimiento para evitar bloqueos Web
+    game = MinesweeperEngine(
+      rows: widget.rows,
+      cols: widget.cols,
+      totalMines: widget.mines,
+    );
   }
 
   void _startNewGame() {
@@ -38,7 +42,6 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  // Retorna el color del número basado en el estilo Clásico exigido
   Color _getNumberColor(int number) {
     switch (number) {
       case 1: return Colors.blue;
@@ -54,7 +57,12 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Buscaminas - Modo Juego'),
+        title: Text('Tablero ${widget.rows}x${widget.cols}'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context), 
+          tooltip: 'Volver al menú',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -66,7 +74,6 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Panel de Estado Superior
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -86,13 +93,11 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
             
-            // Tablero Adaptable (Responsive)
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(12.0),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Calcula el tamaño máximo que puede tener cada celda de forma proporcional
                     final double cellSize = (constraints.maxWidth / game.cols) < (constraints.maxHeight / game.rows)
                         ? (constraints.maxWidth / game.cols)
                         : (constraints.maxHeight / game.rows);
@@ -101,43 +106,44 @@ class _GameScreenState extends State<GameScreen> {
                       child: SizedBox(
                         width: cellSize * game.cols,
                         height: cellSize * game.rows,
-                        child: GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: game.rows * game.cols,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: game.cols,
-                          ),
-                          itemBuilder: (context, index) {
-                            int r = index ~/ game.cols;
-                            int c = index % game.cols;
-                            BoardCell cell = game.board[r][c];
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(game.rows, (r) {
+                            return Expanded(
+                              child: Row(
+                                children: List.generate(game.cols, (c) {
+                                  BoardCell cell = game.board[r][c];
 
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  game.revealCell(r, c);
-                                });
-                              },
-                              onLongPress: () {
-                                setState(() {
-                                  game.toggleFlag(r, c);
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200), // Animación sutil de revelado
-                                margin: const EdgeInsets.all(1.0),
-                                decoration: BoxDecoration(
-                                  color: cell.state == CellState.revealed
-                                      ? (cell.isMine ? Colors.red.shade300 : Colors.grey.shade300)
-                                      : Colors.blueGrey.shade700,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Center(
-                                  child: _buildCellContent(cell),
-                                ),
+                                  return Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          game.revealCell(r, c);
+                                        });
+                                      },
+                                      onLongPress: () {
+                                        setState(() {
+                                          game.toggleFlag(r, c);
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 150),
+                                        margin: const EdgeInsets.all(1.5),
+                                        decoration: BoxDecoration(
+                                          color: cell.state == CellState.revealed
+                                              ? (cell.isMine ? Colors.red.shade300 : Colors.grey.shade300)
+                                              : Colors.blueGrey.shade700,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Center(
+                                          child: _buildCellContent(cell),
+                                        ),
+                                    ),
+                                  );
+                                }),
                               ),
                             );
-                          },
+                          }),
                         ),
                       ),
                     );
@@ -153,18 +159,19 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildCellContent(BoardCell cell) {
     if (cell.state == CellState.flagged) {
-      return const Icon(Icons.flag, color: Colors.orange, size: 18);
+      return const Icon(Icons.flag, color: Colors.orange, size: 16);
     }
     
     if (cell.state == CellState.revealed) {
       if (cell.isMine) {
-        return const Icon(Icons.brightness_7, color: Colors.black, size: 18); // Representación de Mina
+        return const Icon(Icons.brightness_7, color: Colors.black, size: 16);
       }
       if (cell.adjacentMines > 0) {
         return Text(
           '${cell.adjacentMines}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 14,
             color: _getNumberColor(cell.adjacentMines),
           ),
         );
