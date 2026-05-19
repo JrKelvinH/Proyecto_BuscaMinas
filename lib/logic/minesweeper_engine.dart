@@ -36,7 +36,6 @@ class MinesweeperEngine {
     _initializeBoard();
   }
 
-  // Inicializa la cuadrícula vacía
   void _initializeBoard() {
     board = List.generate(
       rows,
@@ -47,7 +46,6 @@ class MinesweeperEngine {
     isWon = false;
   }
 
-  // Coloca las minas asegurando que el primer clic (startRow, startCol) esté a salvo
   void _generateMines(int startRow, int startCol) {
     final random = Random();
     int minesPlaced = 0;
@@ -56,7 +54,6 @@ class MinesweeperEngine {
       int r = random.nextInt(rows);
       int c = random.nextInt(cols);
 
-      // Evita poner una mina en el primer clic o donde ya existe una
       if ((r == startRow && c == startCol) || board[r][c].isMine) {
         continue;
       }
@@ -68,7 +65,6 @@ class MinesweeperEngine {
     _calculateAdjacentMines();
   }
 
-  // Cuenta las minas alrededor de cada celda
   void _calculateAdjacentMines() {
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -89,7 +85,6 @@ class MinesweeperEngine {
     }
   }
 
-  // Revelar una celda (Acción del usuario)
   void revealCell(int r, int c) {
     if (isGameOver || isWon || board[r][c].state != CellState.hidden) return;
 
@@ -108,7 +103,6 @@ class MinesweeperEngine {
     _checkVictory();
   }
 
-  // Algoritmo recursivo Flood Fill para vaciar zonas sin minas adyacentes
   void _floodFill(int r, int c) {
     if (r < 0 || r >= rows || c < 0 || c >= cols) return;
     if (board[r][c].state != CellState.hidden || board[r][c].isMine) return;
@@ -124,7 +118,6 @@ class MinesweeperEngine {
     }
   }
 
-  // Alternar bandera (clic largo / click derecho)
   void toggleFlag(int r, int c) {
     if (isGameOver || isWon || board[r][c].state == CellState.revealed) return;
 
