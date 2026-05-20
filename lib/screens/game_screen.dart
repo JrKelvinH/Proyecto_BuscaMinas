@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/minesweeper_engine.dart';
 
 class GameScreen extends StatefulWidget {
   final int rows;
   final int cols;
   final int mines;
+  final String difficultyName;
 
   const GameScreen({
     super.key, 
     required this.rows,  
     required this.cols, 
     required this.mines,
+    required this.difficultyName,
   });
 
   @override
@@ -18,18 +23,32 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  // Se mantiene el late por el que consultabas, pero inicializado correctamente
   late MinesweeperEngine game;
+  Timer? _timer;
+  int _secondsElapsed = 0;
 
   @override
   void initState() {
     super.initState();
-    // Inicialización directa en el nacimiento para evitar bloqueos Web
-    game = MinesweeperEngine(
-      rows: widget.rows,
-      cols: widget.cols,
-      totalMines: widget.mines,
-    );
+    _startNewGame();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _secondsElapsed = 0;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!game.isGameOver && !game.isWon && !game.isFirstMove) {
+        setState(() {
+          _secondsElapsed++;
+        });
+      }
+    });
   }
 
   void _startNewGame() {
@@ -39,7 +58,54 @@ class _GameScreenState extends State<GameScreen> {
         cols: widget.cols,
         totalMines: widget.mines,
       );
+      _secondsElapsed = 0;
     });
+    _startTimer();
+  }
+
+  Future<void> _saveHighScore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String key = 'high_score_${widget.difficultyName}';
+    final String? cachedData = prefs.getString(key);
+    bool shouldUpdate = false;
+
+    final newScore = {
+      'bestTime': _secondsElapsed,
+      'fewestAttempts': game.attempts,
+      'date': '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}'
+    };
+
+    if (cachedData != null) {
+      try {
+        final Map<String, dynamic> oldScore = jsonDecode(cachedData);
+        if (_secondsElapsed < oldScore['bestTime'] || game.attempts < oldScore['fewestAttempts']) {
+          shouldUpdate = true;
+        }
+      } catch (e) {
+        shouldUpdate = true;
+      }
+    } else {
+      shouldUpdate = true;
+    }
+
+    if (shouldUpdate) {
+      await prefs.setString(key, jsonEncode(newScore));
+    }
+  }
+
+  void _handleCellTap(int r, int c) {
+    if (game.isGameOver || game.isWon) return;
+
+    setState(() {
+      game.revealCell(r, c);
+    });
+
+    if (game.isWon) {
+      _timer?.cancel();
+      _saveHighScore(); 
+    } else if (game.isGameOver) {
+      _timer?.cancel();
+    }
   }
 
   Color _getNumberColor(int number) {
@@ -81,18 +147,29 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   Text(
                     'Minas: ${widget.mines}',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  if (game.isWon)
-                    const Text('¡GANASTE! 🎉', style: TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold))
-                  else if (game.isGameOver)
-                    const Text('GAME OVER 💥', style: TextStyle(color: Colors.red, fontSize: 20, fontWeight: FontWeight.bold))
-                  else
-                    const Text('En juego 🎮', style: TextStyle(fontSize: 18)),
+                  Text(
+                    '⏱️ Tiempo: ${_secondsElapsed}s',
+                    style: const TextStyle(fontSize: 16, color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '🎯 Intentos: ${game.attempts}',
+                    style: const TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ),
-            
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Center(
+                child: game.isWon
+                    ? const Text('¡GANASTE! 🎉', style: TextStyle(color: Colors.green, fontSize: 22, fontWeight: FontWeight.bold))
+                    : game.isGameOver
+                        ? const Text('GAME OVER 💥', style: TextStyle(color: Colors.red, fontSize: 22, fontWeight: FontWeight.bold))
+                        : const Text('En juego 🎮', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
@@ -116,11 +193,7 @@ class _GameScreenState extends State<GameScreen> {
 
                                   return Expanded(
                                     child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          game.revealCell(r, c);
-                                        });
-                                      },
+                                      onTap: () => _handleCellTap(r, c),
                                       onLongPress: () {
                                         setState(() {
                                           game.toggleFlag(r, c);
@@ -138,6 +211,7 @@ class _GameScreenState extends State<GameScreen> {
                                         child: Center(
                                           child: _buildCellContent(cell),
                                         ),
+                                      ),
                                     ),
                                   );
                                 }),
@@ -180,3 +254,4 @@ class _GameScreenState extends State<GameScreen> {
     return const SizedBox.shrink();
   }
 }
+
