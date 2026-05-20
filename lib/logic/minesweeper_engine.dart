@@ -27,6 +27,7 @@ class MinesweeperEngine {
   bool isFirstMove = true;
   bool isGameOver = false;
   bool isWon = false;
+  int attempts = 0; 
 
   MinesweeperEngine({
     required this.rows,
@@ -44,6 +45,7 @@ class MinesweeperEngine {
     isFirstMove = true;
     isGameOver = false;
     isWon = false;
+    attempts = 0;
   }
 
   void _generateMines(int startRow, int startCol) {
@@ -87,6 +89,8 @@ class MinesweeperEngine {
 
   void revealCell(int r, int c) {
     if (isGameOver || isWon || board[r][c].state != CellState.hidden) return;
+
+    attempts++; 
 
     if (isFirstMove) {
       isFirstMove = false;
