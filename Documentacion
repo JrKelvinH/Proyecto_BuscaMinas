@@ -1,0 +1,24 @@
+Documentación del Proyecto: Buscaminas en Flutter
+Este proyecto consiste en el desarrollo de un juego de Buscaminas interactivo utilizando el framework Flutter. El sistema cuenta con una arquitectura modular que separa la lógica matemática de la interfaz de usuario, y almacena récords de partidas localmente en el dispositivo.
+Estructura del Código
+El código está organizado en tres módulos independientes dentro del directorio lib/:
+1. Motor Lógico (lib/logic/minesweeper_engine.dart)
+Maneja la matriz de celdas y evalúa las reglas del juego sin depender de componentes visuales.
+Seguridad en el primer movimiento: El algoritmo evita posicionar minas antes del primer clic del usuario. La colocación aleatoria se activa tras la primera interacción, garantizando que la celda inicial esté libre y tenga cero minas adyacentes.
+Expansión por Flood Fill: Al descubrir una celda vacía (con cero minas alrededor), una función recursiva abre automáticamente todas las celdas seguras colindantes.
+Conteo de intentos: Registra de forma lineal la cantidad de clics válidos efectuados por el jugador durante la partida.
+2. Interfaz del Tablero (lib/screens/game_screen.dart)
+Se encarga del renderizado gráfico del juego y el manejo de los estados visuales.
+Layout Adaptable: Utiliza una estructura de filas y columnas (Column y Row) combinada con widgets Expanded. Esto asegura que el tablero ocupe una proporción matemática exacta de la pantalla, previniendo errores de visualización en navegadores web y dispositivos móviles.
+Ciclo de Vida: Inicializa el motor de juego en el método init(). Implementa un objeto de tipo Timer para actualizar el cronómetro cada segundo y cancela su ejecución en el método dispose para liberar memoria.
+3. Archivo Principal y Menú (lib/main.dart)
+Es el punto de acceso de la aplicación. Gestiona la inicialización general y despliega un menú inicial con tres configuraciones fijas:
+Fácil: Tablero de 8x8 con 10 minas.
+Medio: Tablero de 12x12 con 25 minas.
+Difícil: Tablero de 16x16 con 40 minas.
+Sistema de Persistencia (High Scores)
+Al completarse un tablero con éxito, el sistema verifica el resultado y gestiona las puntuaciones de forma local mediante el paquete shared_preferences.
+El almacenamiento utiliza las llaves high_score_facil, high_score_medio y high_score_dificil para guardar objetos serializados en formato JSON. El programa lee estos registros al iniciar y actualiza el récord en pantalla si el jugador logra superar la partida bajo dos condiciones:
+Tiempo: Completar el tablero en un número menor de segundos.
+Intentos: Resolver el mapa con una menor cantidad de clics efectuados.
+Cada récord guardado incluye la fecha del sistema (día, mes y año) obtenida mediante la clase DateTime.
